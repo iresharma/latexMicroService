@@ -1,4 +1,4 @@
-# Leaners Digital Latex -> PNG, microservice
+# Latex -> PNG, microservice
 
 ### current status
 
