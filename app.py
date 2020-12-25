@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from os import environ
 import imgkit
+from PIL import Image
 
 baseStart = '''
 <html lang="en">
@@ -35,10 +36,16 @@ options = {
 app = Flask(__name__)
 
 CORS(app)
-# TOKEN = '13711ba50ac880e44c115afed90d5267d9e0e695716cd8ceaab0469f4d31cad4'
-TOKEN = environ['TOKEN']
+TOKEN = '13711ba50ac880e44c115afed90d5267d9e0e695716cd8ceaab0469f4d31cad4'
+# TOKEN = environ['TOKEN']
 
 # imgkit.from_file('x.html', 'out.jpg')
+
+def cropper():
+  image = Image.open('out.png')
+  box = (image.size[0]/2 - image.size[0]/8, 0, image.size[0]/2 + image.size[0]/8, image.size[1])
+  cropped_image = image.crop(box)
+  cropped_image.save('cropped_image.png')
 
 
 @app.route('/wake')
@@ -55,11 +62,8 @@ def png():
         args = request.get_json()
         imgkit.from_string(
             baseStart + args['latex'] + baseEnd, 'out.png', options=options)
-        print('hi')
-        return jsonify({
-            'status': True,
-            'file': 'out.jpg'
-        }), 200
+        cropper()
+        return send_file('cropped_image.png', mimetype='image/png')
 
 @app.route('/matrix', methods=['POST'])
 def matrix():
@@ -74,10 +78,8 @@ def matrix():
         s = s + str(j) + '&'
       s = s[0:len(s) - 1] + '\\\\'
     imgkit.from_string(baseStart + start + s + end + baseEnd, 'out.png', options=options)
-    return jsonify({
-      'status': True,
-      'message': 'Bruh this worked'
-    }), 200
+    cropper()
+    return send_file('cropped_image.png', mimetype='image/png')
 
 if __name__ == "__main__":
     app.run(debug=True)
