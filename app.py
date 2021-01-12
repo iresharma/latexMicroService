@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from os import environ
+from os import environ, remove
 import imgkit
 from PIL import Image
 
@@ -46,6 +46,7 @@ def cropper():
   box = (image.size[0]/2 - image.size[0]/8, 0, image.size[0]/2 + image.size[0]/8, image.size[1])
   cropped_image = image.crop(box)
   cropped_image.save('cropped_image.png')
+  remove('out.png')
 
 
 @app.route('/wake')
@@ -60,6 +61,7 @@ def wake():
 def png():
     if request.headers['auth'] == TOKEN:
         args = request.get_json()
+        print(args['latex'])
         imgkit.from_string(
             baseStart + args['latex'] + baseEnd, 'out.png', options=options)
         cropper()
@@ -80,6 +82,11 @@ def matrix():
     imgkit.from_string(baseStart + start + s + end + baseEnd, 'out.png', options=options)
     cropper()
     return send_file('cropped_image.png', mimetype='image/png')
+
+@app.after_request
+def delete(response):
+  remove('cropped_image.png')
+  return response
 
 if __name__ == "__main__":
     app.run(debug=True)
