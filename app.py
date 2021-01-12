@@ -1,8 +1,12 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from os import environ, remove
+from os import environ, remove, walk
 import imgkit
 from PIL import Image
+import random
+import string
+
+TOKEN = '13711ba50ac880e44c115afed90d5267d9e0e695716cd8ceaab0469f4d31cad4'
 
 baseStart = '''
 <html lang="en">
@@ -36,17 +40,14 @@ options = {
 app = Flask(__name__)
 
 CORS(app)
-TOKEN = '13711ba50ac880e44c115afed90d5267d9e0e695716cd8ceaab0469f4d31cad4'
-# TOKEN = environ['TOKEN']
 
-# imgkit.from_file('x.html', 'out.jpg')
-
-def cropper():
-  image = Image.open('out.png')
+def cropper(name: str):
+  image = Image.open(name)
   box = (image.size[0]/2 - image.size[0]/8, 0, image.size[0]/2 + image.size[0]/8, image.size[1])
   cropped_image = image.crop(box)
-  cropped_image.save('cropped_image.png')
-  remove('out.png')
+  cropped_image.save('cropped_image' + '_' + name +'.png')
+  remove(name)
+  return 'cropped_image' + '_' + name +'.png'
 
 
 @app.route('/wake')
@@ -59,33 +60,39 @@ def wake():
 
 @app.route('/png', methods=['POST'])
 def png():
-    if request.headers['auth'] == TOKEN:
-        args = request.get_json()
-        print(args['latex'])
-        imgkit.from_string(
-            baseStart + args['latex'] + baseEnd, 'out.png', options=options)
-        cropper()
-        return send_file('cropped_image.png', mimetype='image/png')
+    args = request.get_json()
+    print(args['latex'])
+    res = ''.join(random.choices(string.ascii_uppercase +
+                             string.digits, k = 5))
+    imgkit.from_string(
+        baseStart + args['latex'] + baseEnd, res + '.png', options=options)
+    name = cropper(res + '.png')
+    return send_file(name, mimetype='image/png')
 
 @app.route('/matrix', methods=['POST'])
 def matrix():
-  if request.headers['auth'] == TOKEN:
-    args = request.get_json()
-    mat = args['matrix']
-    start = r'\begin{bmatrix}'
-    end = r'\end{bmatrix}'
-    s = ''
-    for i in mat:
-      for j in i:
-        s = s + str(j) + '&'
-      s = s[0:len(s) - 1] + '\\\\'
-    imgkit.from_string(baseStart + start + s + end + baseEnd, 'out.png', options=options)
-    cropper()
-    return send_file('cropped_image.png', mimetype='image/png')
+  args = request.get_json()
+  mat = args['matrix']
+  start = r'\begin{bmatrix}'
+  end = r'\end{bmatrix}'
+  s = ''
+  for i in mat:
+    for j in i:
+      s = s + str(j) + '&'
+    s = s[0:len(s) - 1] + '\\\\'
+  res = ''.join(random.choices(string.ascii_uppercase +
+                             string.digits, k = 5))
+  imgkit.from_string(baseStart + start + s + end + baseEnd, res + '.png', options=options)
+  name = cropper(res + '.png')
+  return send_file(name, mimetype='image/png')
 
 @app.after_request
 def delete(response):
-  remove('cropped_image.png')
+  path = walk('.')
+  for root, direc, files in path:
+    for i in files:
+      if 'cropped_image' in i:
+        remove(i)
   return response
 
 if __name__ == "__main__":
